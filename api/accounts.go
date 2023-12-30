@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
+	"log"
 	"net/http"
 
 	db "github.com/billy-le/simple-bank/db/sqlc"
@@ -138,7 +138,7 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 
 	err := server.store.DeleteAccount(ctx, req.ID)
 	if err != nil {
-		fmt.Errorf("delete err:", err)
+		log.Fatal("delete err: ", err)
 	}
 
 	ctx.JSON(http.StatusNoContent, nil)
