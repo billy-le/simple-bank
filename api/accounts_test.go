@@ -239,13 +239,121 @@ func TestCreateAccount(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			var jsonString = fmt.Sprintf(`{"owner": "%s", "currency": "%s"}`, testCase.Owner, testCase.Currency)
-			fmt.Println(jsonString)
 			var jsonBody = []byte(jsonString)
 
 			bodyReader := bytes.NewReader(jsonBody)
 
 			url := "/accounts"
 			request, err := http.NewRequest(http.MethodPost, url, bodyReader)
+			require.NoError(t, err)
+			server.router.ServeHTTP(recorder, request)
+			testCase.checkResponses(t, recorder)
+		})
+	}
+}
+
+func TestUpdateAccount(t *testing.T) {
+	account := createRandomAccount()
+	amount := util.RandomMoney()
+
+	updatedAccount := db.Account{
+		ID:       account.ID,
+		Owner:    account.Owner,
+		Currency: account.Currency,
+		Balance:  account.Balance + amount,
+	}
+
+	testCases := []struct {
+		name           string
+		accountID      int64
+		amount         int64
+		buildStubs     func(store *mockdb.MockStore)
+		checkResponses func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name:      "Ok",
+			accountID: account.ID,
+			amount:    amount,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{ID: account.ID, Amount: amount})).Times(1).Return(updatedAccount, nil)
+			},
+			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+				requireBodyAndMatch(t, recorder.Body, updatedAccount)
+			},
+		},
+		{
+			name:      "InvalidID",
+			accountID: -1,
+			amount:    amount,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name:      "InvalidAmount",
+			accountID: account.ID,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name:      "NotFound",
+			accountID: account.ID,
+			amount:    amount,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{
+					ID:     account.ID,
+					Amount: amount,
+				})).Times(1).Return(db.Account{}, sql.ErrNoRows)
+			},
+			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusNotFound, recorder.Code)
+			},
+		},
+		{
+			name:      "InternalServerError",
+			accountID: account.ID,
+			amount:    amount,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{
+					ID:     account.ID,
+					Amount: amount,
+				})).Times(1).Return(db.Account{}, sql.ErrConnDone)
+			},
+			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			},
+		},
+	}
+
+	for i := range testCases {
+		testCase := testCases[i]
+		t.Run(testCase.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			testCase.buildStubs(store)
+			server := NewServer(store)
+			recorder := httptest.NewRecorder()
+
+			jsonString := ""
+			if testCase.amount != 0 {
+				jsonString = fmt.Sprintf(`{"amount": %d}`, testCase.amount)
+			}
+			fmt.Println(jsonString)
+			var jsonBody = []byte(jsonString)
+			bodyReader := bytes.NewReader(jsonBody)
+			url := fmt.Sprintf("/accounts/%d", testCase.accountID)
+
+			request, err := http.NewRequest(http.MethodPut, url, bodyReader)
 			require.NoError(t, err)
 			server.router.ServeHTTP(recorder, request)
 			testCase.checkResponses(t, recorder)

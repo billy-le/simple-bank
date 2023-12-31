@@ -88,7 +88,7 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 }
 
 type updateAccountRequest struct {
-	ID     int64 `uri:"id" binding:"required"`
+	ID     int64 `uri:"id" binding:"required,min=0"`
 	Amount int64 `json:"amount"`
 }
 
