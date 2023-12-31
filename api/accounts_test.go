@@ -216,7 +216,7 @@ func TestCreateAccount(t *testing.T) {
 		{
 			name:     "BadRequest",
 			Owner:    newAccount.Owner,
-			Currency: "CAD",
+			Currency: "AUD",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().CreateAccount(gomock.Any(), gomock.Any()).Times(0)
 
@@ -366,7 +366,7 @@ func TestDeleteAccount(t *testing.T) {
 		ID:       util.RandomInt(0, 1000),
 		Owner:    "User",
 		Balance:  0,
-		Currency: "USD",
+		Currency: util.USD,
 	}
 
 	testCases := []struct {
