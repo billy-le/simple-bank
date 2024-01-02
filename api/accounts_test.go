@@ -35,7 +35,7 @@ func TestGetAccount(t *testing.T) {
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyAndMatch(t, recorder.Body, account)
+				requireBodyAndMatchAccount(t, recorder.Body, account)
 			},
 		},
 		{
@@ -198,7 +198,7 @@ func TestCreateAccount(t *testing.T) {
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyAndMatch(t, recorder.Body, newAccount)
+				requireBodyAndMatchAccount(t, recorder.Body, newAccount)
 			},
 		},
 		{
@@ -279,7 +279,7 @@ func TestUpdateAccount(t *testing.T) {
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyAndMatch(t, recorder.Body, updatedAccount)
+				requireBodyAndMatchAccount(t, recorder.Body, updatedAccount)
 			},
 		},
 		{
@@ -439,7 +439,7 @@ func createRandomAccount() db.Account {
 	}
 }
 
-func requireBodyAndMatch(t *testing.T, body *bytes.Buffer, account db.Account) db.Account {
+func requireBodyAndMatchAccount(t *testing.T, body *bytes.Buffer, account db.Account) db.Account {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
