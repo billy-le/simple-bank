@@ -81,7 +81,7 @@ func TestGetAccount(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/accounts/%d", testCase.accountID)
@@ -160,7 +160,7 @@ func TestListAccounts(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/accounts?page_id=%d&page_size=%d", testCase.pageID, testCase.pageSize)
@@ -235,7 +235,7 @@ func TestCreateAccount(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			var jsonString = fmt.Sprintf(`{"owner": "%s", "currency": "%s"}`, testCase.Owner, testCase.Currency)
@@ -341,7 +341,7 @@ func TestUpdateAccount(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			jsonString := ""
@@ -417,7 +417,7 @@ func TestDeleteAccount(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/accounts/%d", testCase.accountID)

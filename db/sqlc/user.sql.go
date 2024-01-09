@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"time"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -18,7 +17,7 @@ INSERT INTO users (
     email
 )
 VALUES ($1, $2, $3, $4)
-RETURNING username, full_name, email, created_at, password_changed_at
+RETURNING username, hashed_password, password_changed_at, full_name, email, created_at
 `
 
 type CreateUserParams struct {
@@ -28,55 +27,41 @@ type CreateUserParams struct {
 	Email          string `json:"email"`
 }
 
-type CreateUserRow struct {
-	Username          string    `json:"username"`
-	FullName          string    `json:"full_name"`
-	Email             string    `json:"email"`
-	CreatedAt         time.Time `json:"created_at"`
-	PasswordChangedAt time.Time `json:"password_changed_at"`
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
 		arg.Username,
 		arg.HashedPassword,
 		arg.FullName,
 		arg.Email,
 	)
-	var i CreateUserRow
+	var i User
 	err := row.Scan(
 		&i.Username,
+		&i.HashedPassword,
+		&i.PasswordChangedAt,
 		&i.FullName,
 		&i.Email,
 		&i.CreatedAt,
-		&i.PasswordChangedAt,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT username, full_name, email, created_at, password_changed_at FROM users
+SELECT username, hashed_password, password_changed_at, full_name, email, created_at FROM users
 WHERE username = $1
 LIMIT 1
 `
 
-type GetUserRow struct {
-	Username          string    `json:"username"`
-	FullName          string    `json:"full_name"`
-	Email             string    `json:"email"`
-	CreatedAt         time.Time `json:"created_at"`
-	PasswordChangedAt time.Time `json:"password_changed_at"`
-}
-
-func (q *Queries) GetUser(ctx context.Context, username string) (GetUserRow, error) {
+func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, username)
-	var i GetUserRow
+	var i User
 	err := row.Scan(
 		&i.Username,
+		&i.HashedPassword,
+		&i.PasswordChangedAt,
 		&i.FullName,
 		&i.Email,
 		&i.CreatedAt,
-		&i.PasswordChangedAt,
 	)
 	return i, err
 }

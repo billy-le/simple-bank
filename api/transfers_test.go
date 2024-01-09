@@ -262,7 +262,7 @@ func TestCreateTransfer(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			var jsonString = fmt.Sprintf(`{"from_account_id": %d, "to_account_id": %d, "amount": %d, "currency": "%s"}`, testCase.fromAccountID, testCase.toAccountID, testCase.amount, testCase.currency)

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createRandomUser(t *testing.T) CreateUserRow {
+func createRandomUser(t *testing.T) User {
 	arg := CreateUserParams{
 		Username:       util.RandomOwner(),
 		HashedPassword: util.RandomHashedPassword(),

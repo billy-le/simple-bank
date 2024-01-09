@@ -20,7 +20,7 @@ import (
 func TestGetUser(t *testing.T) {
 	user := createRandomUser()
 
-	userRow := db.GetUserRow{
+	userRow := db.User{
 		Username: user.Username,
 		FullName: user.FullName,
 		Email:    user.Email,
@@ -47,7 +47,7 @@ func TestGetUser(t *testing.T) {
 			name:     "NotFound",
 			username: user.Username,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.GetUserRow{}, sql.ErrNoRows)
+				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.User{}, sql.ErrNoRows)
 
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -58,23 +58,13 @@ func TestGetUser(t *testing.T) {
 			name:     "InternalServerError",
 			username: user.Username,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.GetUserRow{}, sql.ErrConnDone)
+				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.User{}, sql.ErrConnDone)
 
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
-		// {
-		// 	name:     "InvalidUsername",
-		// 	username: "",
-		// 	buildStubs: func(store *mockdb.MockStore) {
-		// 		store.EXPECT().GetUser(gomock.Any(), gomock.Any()).Times(0)
-		// 	},
-		// 	checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-		// 		require.Equal(t, http.StatusBadRequest, recorder.Code)
-		// 	},
-		// },
 	}
 
 	for i := range testCases {
@@ -85,7 +75,7 @@ func TestGetUser(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			url := fmt.Sprintf("/users/%s", testCase.username)
@@ -100,7 +90,7 @@ func TestGetUser(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	newUser := createRandomUser()
 
-	createdUser := db.CreateUserRow{
+	createdUser := db.User{
 		Username: newUser.Username,
 		FullName: newUser.FullName,
 		Email:    newUser.Email,
@@ -127,7 +117,7 @@ func TestCreateUser(t *testing.T) {
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
-				requireBodyAndMatchUser(t, recorder.Body, db.GetUserRow{
+				requireBodyAndMatchUser(t, recorder.Body, db.User{
 					Username: newUser.Username,
 					FullName: newUser.FullName,
 					Email:    newUser.Email,
@@ -141,7 +131,7 @@ func TestCreateUser(t *testing.T) {
 			FullName: newUser.FullName,
 			Password: newUser.HashedPassword,
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(1).Return(db.CreateUserRow{}, sql.ErrConnDone)
+				store.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(1).Return(db.User{}, sql.ErrConnDone)
 
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -172,7 +162,7 @@ func TestCreateUser(t *testing.T) {
 
 			store := mockdb.NewMockStore(ctrl)
 			testCase.buildStubs(store)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			var jsonString = fmt.Sprintf(`{"username": "%s", "email": "%s", "full_name": "%s", "password": "%s"}`, testCase.Username, testCase.Email, testCase.FullName, testCase.Password)
@@ -198,11 +188,11 @@ func createRandomUser() db.User {
 	}
 }
 
-func requireBodyAndMatchUser(t *testing.T, body *bytes.Buffer, user db.GetUserRow) db.GetUserRow {
+func requireBodyAndMatchUser(t *testing.T, body *bytes.Buffer, user db.User) db.User {
 	data, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var gotUser db.GetUserRow
+	var gotUser db.User
 	err = json.Unmarshal(data, &gotUser)
 	require.NoError(t, err)
 	require.Equal(t, gotUser, user)
