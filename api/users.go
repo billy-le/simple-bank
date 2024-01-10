@@ -2,11 +2,13 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	db "github.com/billy-le/simple-bank/db/sqlc"
+	"github.com/billy-le/simple-bank/token"
 	"github.com/billy-le/simple-bank/util"
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
@@ -85,6 +87,14 @@ func (server *Server) getUser(ctx *gin.Context) {
 	err := ctx.ShouldBindUri(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+
+	if authPayload.ExpiresAt.Time.Before(time.Now()) {
+		err := errors.New("token has expired")
+		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 

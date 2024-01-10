@@ -9,16 +9,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	mockdb "github.com/billy-le/simple-bank/db/mock"
 	db "github.com/billy-le/simple-bank/db/sqlc"
+	"github.com/billy-le/simple-bank/token"
 	"github.com/billy-le/simple-bank/util"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestGetUser(t *testing.T) {
-	user := createRandomUser()
+	user := createRandomUser(t)
 
 	userRow := db.User{
 		Username: user.Username,
@@ -29,12 +31,16 @@ func TestGetUser(t *testing.T) {
 	testCases := []struct {
 		name           string
 		username       string
+		setupAuth      func(t *testing.T, request *http.Request, tokenMaker token.Maker)
 		buildStubs     func(store *mockdb.MockStore)
 		checkResponses func(t *testing.T, recorder *httptest.ResponseRecorder)
 	}{
 		{
 			name:     "Ok",
 			username: user.Username,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(userRow, nil)
 			},
@@ -46,6 +52,9 @@ func TestGetUser(t *testing.T) {
 		{
 			name:     "NotFound",
 			username: user.Username,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.User{}, sql.ErrNoRows)
 
@@ -57,6 +66,9 @@ func TestGetUser(t *testing.T) {
 		{
 			name:     "InternalServerError",
 			username: user.Username,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
+			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetUser(gomock.Any(), gomock.Eq(user.Username)).Times(1).Return(db.User{}, sql.ErrConnDone)
 
@@ -81,6 +93,8 @@ func TestGetUser(t *testing.T) {
 			url := fmt.Sprintf("/users/%s", testCase.username)
 			request, err := http.NewRequest(http.MethodGet, url, nil)
 			require.NoError(t, err)
+
+			testCase.setupAuth(t, request, server.tokenMaker)
 			server.router.ServeHTTP(recorder, request)
 			testCase.checkResponses(t, recorder)
 		})
@@ -88,7 +102,7 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	newUser := createRandomUser()
+	newUser := createRandomUser(t)
 
 	createdUser := db.User{
 		Username: newUser.Username,
@@ -179,7 +193,7 @@ func TestCreateUser(t *testing.T) {
 	}
 }
 
-func createRandomUser() db.User {
+func createRandomUser(t *testing.T) db.User {
 	return db.User{
 		Username:       util.RandomOwner(),
 		Email:          util.RandomEmail(),
