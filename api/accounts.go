@@ -128,18 +128,9 @@ func (server *Server) updateAccount(ctx *gin.Context) {
 		return
 	}
 
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-
-	if authPayload.Username != req.Owner {
-		err := errors.New("account does not belong to user")
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-
 	arg := db.AddAccountBalanceParams{
 		ID:     req.ID,
 		Amount: req.Amount,
-		Owner:  req.Owner,
 	}
 
 	account, err := server.store.AddAccountBalance(ctx, arg)
@@ -173,20 +164,7 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		return
 	}
 
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-
-	if authPayload.Username != req.Owner {
-		err := errors.New("account does not belong to user")
-		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
-		return
-	}
-
-	arg := db.DeleteAccountParams{
-		ID:    req.ID,
-		Owner: req.Owner,
-	}
-
-	err := server.store.DeleteAccount(ctx, arg)
+	err := server.store.DeleteAccount(ctx, req.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

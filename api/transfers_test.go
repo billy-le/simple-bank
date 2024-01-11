@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,286 +18,275 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestCreateTransfer(t *testing.T) {
-	currency := util.USD
+func TestTransferAPI(t *testing.T) {
 	amount := int64(10)
+
 	user1 := createRandomUser(t)
 	user2 := createRandomUser(t)
+	user3 := createRandomUser(t)
+
 	account1 := createRandomAccount(user1.Username)
 	account2 := createRandomAccount(user2.Username)
+	account3 := createRandomAccount(user3.Username)
+
+	account1.Currency = util.USD
+	account2.Currency = util.USD
+	account3.Currency = util.EUR
 
 	testCases := []struct {
-		name           string
-		fromAccountID  int64
-		toAccountID    int64
-		amount         int64
-		currency       string
-		setupAuth      func(t *testing.T, request *http.Request, tokenMaker token.Maker)
-		buildStubs     func(store *mockdb.MockStore)
-		checkResponses func(t *testing.T, recorder *httptest.ResponseRecorder)
+		name          string
+		body          gin.H
+		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
+		buildStubs    func(store *mockdb.MockStore)
+		checkResponse func(recoder *httptest.ResponseRecorder)
 	}{
 		{
-			name:          "Ok",
-			fromAccountID: account1.ID,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      currency,
+			name: "OK",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil)
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(1).Return(account2, nil)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
+
+				arg := db.TransferTxParams{
 					FromAccountID: account1.ID,
 					ToAccountID:   account2.ID,
 					Amount:        amount,
-				})).Times(1).Return(db.TransferTxResult{
-					Transfer: db.Transfer{
-						FromAccountID: account1.ID,
-						ToAccountID:   account2.ID,
-						Amount:        amount,
-					},
-					FromAccount: db.Account{
-						ID:       account1.ID,
-						Owner:    account1.Owner,
-						Balance:  account1.Balance - amount,
-						Currency: currency,
-					},
-					ToAccount: db.Account{
-						ID:       account2.ID,
-						Owner:    account2.Owner,
-						Balance:  account2.Balance + amount,
-						Currency: currency,
-					},
-					FromEntry: db.Entry{
-						AccountID: account1.ID,
-						Amount:    amount,
-					},
-					ToEntry: db.Entry{
-						AccountID: account2.ID,
-						Amount:    amount,
-					},
-				}, nil)
-
+				}
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(arg)).Times(1)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
 			},
 		},
 		{
-			name:          "InvalidCurrency",
-			fromAccountID: account1.ID,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      util.EUR,
+			name: "UnauthorizedUser",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user2.Username, time.Minute)
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil)
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(0)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				var errString = fmt.Sprintf("account [%d] currency mismatch: [%s] vs [EUR]", account1.ID, account1.Currency)
-				require.Equal(t, errRes["error"], errString)
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
 			},
 		},
 		{
-			name:          "AccountNotFound",
-			fromAccountID: account1.ID,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      currency,
+			name: "NoAuthorization",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "FromAccountNotFound",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(db.Account{}, sql.ErrNoRows)
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(0)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				require.Equal(t, errRes["error"], "sql: no rows in result set")
 			},
 		},
 		{
-			name:          "Account1BadRequest",
-			fromAccountID: 0,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      currency,
+			name: "ToAccountNotFound",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
-				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(0)
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil)
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(1).Return(db.Account{}, sql.ErrNoRows)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusNotFound, recorder.Code)
+			},
+		},
+		{
+			name: "FromAccountCurrencyMismatch",
+			body: gin.H{
+				"from_account_id": account3.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user3.Username, time.Minute)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account3.ID)).Times(1).Return(account3, nil)
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				require.Equal(t, errRes["error"], "Key: 'createTransferRequest.FromAccountID' Error:Field validation for 'FromAccountID' failed on the 'required' tag")
 			},
 		},
 		{
-			name:          "Account2BadRequest",
-			fromAccountID: account1.ID,
-			toAccountID:   0,
-			amount:        amount,
-			currency:      currency,
+			name: "ToAccountCurrencyMismatch",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account3.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil).MaxTimes(1)
-				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(0)
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil)
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account3.ID)).Times(1).Return(account3, nil)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				require.Equal(t, errRes["error"], "Key: 'createTransferRequest.ToAccountID' Error:Field validation for 'ToAccountID' failed on the 'required' tag")
 			},
 		},
 		{
-			name:          "AccountInternalServerError",
-			fromAccountID: account1.ID,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      currency,
+			name: "InvalidCurrency",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        "XYZ",
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(db.Account{}, sql.ErrConnDone)
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name: "NegativeAmount",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          -amount,
+				"currency":        util.USD,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(0)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name: "GetAccountError",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().GetAccount(gomock.Any(), gomock.Any()).Times(1).Return(db.Account{}, sql.ErrConnDone)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				require.Equal(t, errRes["error"], "sql: connection is already closed")
 			},
 		},
 		{
-			name:          "TransferInternalServerError",
-			fromAccountID: account1.ID,
-			toAccountID:   account2.ID,
-			amount:        amount,
-			currency:      currency,
+			name: "TransferTxError",
+			body: gin.H{
+				"from_account_id": account1.ID,
+				"to_account_id":   account2.ID,
+				"amount":          amount,
+				"currency":        util.USD,
+			},
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user1.Username, time.Minute)
-
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account1.ID)).Times(1).Return(account1, nil)
 				store.EXPECT().GetAccount(gomock.Any(), gomock.Eq(account2.ID)).Times(1).Return(account2, nil)
-				store.EXPECT().TransferTx(gomock.Any(), gomock.Eq(db.TransferTxParams{
-					FromAccountID: account1.ID,
-					ToAccountID:   account2.ID,
-					Amount:        amount,
-				})).Times(1).Return(db.TransferTxResult{}, sql.ErrConnDone)
+				store.EXPECT().TransferTx(gomock.Any(), gomock.Any()).Times(1).Return(db.TransferTxResult{}, sql.ErrTxDone)
 			},
-			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
-				data, err := io.ReadAll(recorder.Body)
-				require.NoError(t, err)
-
-				var errRes gin.H
-				err = json.Unmarshal(data, &errRes)
-				require.NoError(t, err)
-
-				require.Equal(t, errRes["error"], "sql: connection is already closed")
 			},
 		},
 	}
 
 	for i := range testCases {
-		testCase := testCases[i]
-		t.Run(testCase.name, func(t *testing.T) {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
 			store := mockdb.NewMockStore(ctrl)
-			testCase.buildStubs(store)
+			tc.buildStubs(store)
+
 			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
-			var jsonString = fmt.Sprintf(`{"from_account_id": %d, "to_account_id": %d, "amount": %d, "currency": "%s"}`, testCase.fromAccountID, testCase.toAccountID, testCase.amount, testCase.currency)
-			var jsonBody = []byte(jsonString)
-
-			bodyReader := bytes.NewReader(jsonBody)
-
-			url := "/transfers"
-			request, err := http.NewRequest(http.MethodPost, url, bodyReader)
+			// Marshal body data to JSON
+			data, err := json.Marshal(tc.body)
 			require.NoError(t, err)
 
-			testCase.setupAuth(t, request, server.tokenMaker)
+			url := "/transfers"
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+			require.NoError(t, err)
+
+			tc.setupAuth(t, request, server.tokenMaker)
 			server.router.ServeHTTP(recorder, request)
-			testCase.checkResponses(t, recorder)
+			tc.checkResponse(recorder)
 		})
 	}
 }

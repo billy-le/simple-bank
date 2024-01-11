@@ -326,7 +326,7 @@ func TestUpdateAccount(t *testing.T) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, user.Username, time.Minute)
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{ID: account.ID, Amount: amount, Owner: account.Owner})).Times(1).Return(updatedAccount, nil)
+				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{ID: account.ID, Amount: amount})).Times(1).Return(updatedAccount, nil)
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusOK, recorder.Code)
@@ -374,7 +374,6 @@ func TestUpdateAccount(t *testing.T) {
 				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{
 					ID:     account.ID,
 					Amount: amount,
-					Owner:  account.Owner,
 				})).Times(1).Return(db.Account{}, sql.ErrNoRows)
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -393,7 +392,6 @@ func TestUpdateAccount(t *testing.T) {
 				store.EXPECT().AddAccountBalance(gomock.Any(), gomock.Eq(db.AddAccountBalanceParams{
 					ID:     account.ID,
 					Amount: amount,
-					Owner:  account.Owner,
 				})).Times(1).Return(db.Account{}, sql.ErrConnDone)
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -452,10 +450,7 @@ func TestDeleteAccount(t *testing.T) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, account.Owner, time.Minute)
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteAccount(gomock.Any(), gomock.Eq(db.DeleteAccountParams{
-					ID:    account.ID,
-					Owner: account.Owner,
-				})).Times(1)
+				store.EXPECT().DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).Times(1)
 
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
@@ -485,10 +480,7 @@ func TestDeleteAccount(t *testing.T) {
 				addAuthorization(t, request, tokenMaker, authorizationTypeBearer, account.Owner, time.Minute)
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().DeleteAccount(gomock.Any(), gomock.Eq(db.DeleteAccountParams{
-					ID:    account.ID,
-					Owner: account.Owner,
-				})).Times(1).Return(sql.ErrConnDone)
+				store.EXPECT().DeleteAccount(gomock.Any(), gomock.Eq(account.ID)).Times(1).Return(sql.ErrConnDone)
 			},
 			checkResponses: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
