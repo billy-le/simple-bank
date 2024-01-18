@@ -14,7 +14,8 @@ var (
 )
 
 type Payload struct {
-	Username string `json:"username"`
+	Username string    `json:"username"`
+	ID       uuid.UUID `json:"id"`
 	jwt.RegisteredClaims
 }
 
@@ -32,6 +33,7 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 	}
 
 	return &Payload{
+		ID:               tokenId,
 		Username:         username,
 		RegisteredClaims: claims,
 	}, nil

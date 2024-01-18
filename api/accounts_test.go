@@ -20,7 +20,7 @@ import (
 )
 
 func TestGetAccount(t *testing.T) {
-	user := createRandomUser(t)
+	user, _ := createRandomUser(t)
 	account := createRandomAccount(user.Username)
 
 	testCases := []struct {
@@ -112,7 +112,7 @@ func TestGetAccount(t *testing.T) {
 }
 
 func TestListAccounts(t *testing.T) {
-	user := createRandomUser(t)
+	user, _ := createRandomUser(t)
 
 	accounts := []db.Account{}
 	for i := 0; i < 20; i++ {
@@ -297,7 +297,7 @@ func TestCreateAccount(t *testing.T) {
 }
 
 func TestUpdateAccount(t *testing.T) {
-	user := createRandomUser(t)
+	user, _ := createRandomUser(t)
 	account := createRandomAccount(user.Username)
 	amount := util.RandomMoney()
 
@@ -431,7 +431,7 @@ func TestUpdateAccount(t *testing.T) {
 }
 
 func TestDeleteAccount(t *testing.T) {
-	user := createRandomUser(t)
+	user, _ := createRandomUser(t)
 	account := createRandomAccount(user.Username)
 
 	testCases := []struct {

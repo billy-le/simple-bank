@@ -21,9 +21,9 @@ import (
 func TestTransferAPI(t *testing.T) {
 	amount := int64(10)
 
-	user1 := createRandomUser(t)
-	user2 := createRandomUser(t)
-	user3 := createRandomUser(t)
+	user1, _ := createRandomUser(t)
+	user2, _ := createRandomUser(t)
+	user3, _ := createRandomUser(t)
 
 	account1 := createRandomAccount(user1.Username)
 	account2 := createRandomAccount(user2.Username)
