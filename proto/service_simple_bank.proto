@@ -2,11 +2,24 @@ syntax = "proto3";
 
 package pb;
 
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "rpc_create_user.proto";
 import "rpc_login_user.proto";
 
 option go_package = "github.com/billy-le/simple-bank/pb";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+    info: {
+      title: "Simple Bank";
+      version: "1.0";
+      contact: {
+        name: "Billy Le";
+        url: "https://github.com/billy-le";
+        email: "hi@billyle.dev";
+      };
+    }
+};
 
 service SimpleBank {
     rpc CreateUser (CreateUserRequest) returns (CreateUserResponse) {
