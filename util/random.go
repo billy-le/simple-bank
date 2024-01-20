@@ -45,7 +45,8 @@ func RandomEmail() string {
 	return fmt.Sprintf("%s@example.com", RandomString(6))
 }
 
-func RandomHashedPassword() string {
-	hashPw, _ := HashPassword(RandomString(8))
-	return hashPw
+func RandomHashedPassword() (string, error) {
+	hashPw, err := HashPassword(RandomString(8))
+
+	return hashPw, err
 }
