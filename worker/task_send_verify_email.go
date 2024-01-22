@@ -58,7 +58,7 @@ func (processor *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Cont
 		return fmt.Errorf("failed to create verify email: %w", err)
 	}
 
-	verificationLink := fmt.Sprintf("http://localhost:8080/verify_email?id=%d&code=%s", verifyEmail.ID, verifyEmail.SecretCode)
+	verificationLink := fmt.Sprintf("http://localhost:8080/v1/verify_email?email_id=%d&secret_code=%s", verifyEmail.ID, verifyEmail.SecretCode)
 	subject := "Welcome to Simple Bank"
 	content := fmt.Sprintf(`Hello %s,<br/>
 	Thank you for registering with use!<br/>
