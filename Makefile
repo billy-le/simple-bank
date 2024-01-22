@@ -36,8 +36,9 @@ test:
 server:
 	go run main.go
 
-mockdb:
+mock:
 	mockgen -package mockdb -destination db/mock/store.go github.com/billy-le/simple-bank/db/sqlc Store
+	mockgen -package mockwk -destination worker/mock/distributor.go github.com/billy-le/simple-bank/worker TaskDistributor
 
 dbdocs:
 	dbdocs build docs/db.dbml
@@ -61,4 +62,4 @@ evans:
 redis:
 	docker run --name redis -p 6379:6379 -d redis:7-alpine
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mockdb dbdocs db_schema proto evans migrateup1 migratedown1 new_migration
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc test server mock dbdocs db_schema proto evans migrateup1 migratedown1 new_migration
