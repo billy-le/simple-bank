@@ -65,7 +65,7 @@ func TestRpcUpdateUser(t *testing.T) {
 
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestRpcUpdateUser(t *testing.T) {
 
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
@@ -109,7 +109,7 @@ func TestRpcUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, -time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, -time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
@@ -130,7 +130,7 @@ func TestRpcUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
@@ -151,7 +151,7 @@ func TestRpcUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
@@ -171,7 +171,7 @@ func TestRpcUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
@@ -190,7 +190,7 @@ func TestRpcUpdateUser(t *testing.T) {
 				store.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
 			},
 			buildContext: func(t *testing.T, tokenMaker token.Maker) context.Context {
-				return newContextWithBearerToken(t, tokenMaker, newUser.Username, time.Minute)
+				return newContextWithBearerToken(t, tokenMaker, newUser.Username, newUser.Role, time.Minute)
 			},
 			checkResponses: func(t *testing.T, res *pb.UpdateUserResponse, err error) {
 				require.Error(t, err)
