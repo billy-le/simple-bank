@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"net"
 	"net/http"
 	"os"
 
-	"github.com/billy-le/simple-bank/api"
 	db "github.com/billy-le/simple-bank/db/sqlc"
+
+	"github.com/billy-le/simple-bank/api"
 	"github.com/billy-le/simple-bank/gapi"
 	"github.com/billy-le/simple-bank/mail"
 	"github.com/billy-le/simple-bank/pb"
@@ -17,6 +17,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rakyll/statik/fs"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -27,7 +28,6 @@ import (
 	_ "github.com/billy-le/simple-bank/docs/statik"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Msg("cannot load config")
 	}
-	conn, err := sql.Open(config.DBDriver, config.DBSource)
+	conn, err := pgxpool.New(context.Background(), config.DBSource)
 	if err != nil {
 		log.Fatal().Msg("cannot connect to db")
 	}

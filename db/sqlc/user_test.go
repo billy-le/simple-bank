@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/billy-le/simple-bank/util"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func createRandomUser(t *testing.T) User {
 		Email:          util.RandomEmail(),
 	}
 
-	user, err := testQueries.CreateUser(context.Background(), arg)
+	user, err := testStore.CreateUser(context.Background(), arg)
 	require.NoError(t, err)
 	require.NotEmpty(t, user)
 
@@ -40,9 +40,9 @@ func TestUpdateUserOnlyFullName(t *testing.T) {
 	oldUser := createRandomUser(t)
 	newFullName := util.RandomOwner()
 
-	user, err := testQueries.UpdateUser(context.Background(), UpdateUserParams{
+	user, err := testStore.UpdateUser(context.Background(), UpdateUserParams{
 		Username: oldUser.Username,
-		FullName: sql.NullString{
+		FullName: pgtype.Text{
 			String: newFullName,
 			Valid:  true,
 		},
@@ -60,9 +60,9 @@ func TestUpdateUserOnlyEmail(t *testing.T) {
 	oldUser := createRandomUser(t)
 	email := util.RandomEmail()
 
-	user, err := testQueries.UpdateUser(context.Background(), UpdateUserParams{
+	user, err := testStore.UpdateUser(context.Background(), UpdateUserParams{
 		Username: oldUser.Username,
-		Email: sql.NullString{
+		Email: pgtype.Text{
 			String: email,
 			Valid:  true,
 		},
@@ -81,9 +81,9 @@ func TestUpdateUserOnlyPassword(t *testing.T) {
 	hashedPassword, err := util.RandomHashedPassword()
 	require.NoError(t, err)
 
-	user, err := testQueries.UpdateUser(context.Background(), UpdateUserParams{
+	user, err := testStore.UpdateUser(context.Background(), UpdateUserParams{
 		Username: oldUser.Username,
-		HashedPassword: sql.NullString{
+		HashedPassword: pgtype.Text{
 			String: hashedPassword,
 			Valid:  true,
 		},
@@ -104,17 +104,17 @@ func TestUpdateUserAllFields(t *testing.T) {
 	newEmail := util.RandomEmail()
 	newFullName := util.RandomOwner()
 
-	user, err := testQueries.UpdateUser(context.Background(), UpdateUserParams{
+	user, err := testStore.UpdateUser(context.Background(), UpdateUserParams{
 		Username: oldUser.Username,
-		HashedPassword: sql.NullString{
+		HashedPassword: pgtype.Text{
 			String: hashedPassword,
 			Valid:  true,
 		},
-		Email: sql.NullString{
+		Email: pgtype.Text{
 			String: newEmail,
 			Valid:  true,
 		},
-		FullName: sql.NullString{
+		FullName: pgtype.Text{
 			String: newFullName,
 			Valid:  true,
 		},

@@ -2,7 +2,6 @@ package gapi
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"reflect"
 	"testing"
@@ -13,7 +12,6 @@ import (
 	"github.com/billy-le/simple-bank/util"
 	"github.com/billy-le/simple-bank/worker"
 	mockwk "github.com/billy-le/simple-bank/worker/mock"
-	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
@@ -113,7 +111,7 @@ func TestRpcCreateUser(t *testing.T) {
 				Password: password,
 			},
 			buildStubs: func(store *mockdb.MockStore, taskDistributor *mockwk.MockTaskDistributor) {
-				store.EXPECT().CreateUserTx(gomock.Any(), gomock.Any()).Times(1).Return(db.CreateUserTxResult{}, sql.ErrConnDone)
+				store.EXPECT().CreateUserTx(gomock.Any(), gomock.Any()).Times(1).Return(db.CreateUserTxResult{}, db.ErrRecordNotFound)
 				taskDistributor.EXPECT().DistributeTaskSendVerifyEmail(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponses: func(t *testing.T, res *pb.CreateUserResponse, err error) {
@@ -213,11 +211,7 @@ func TestRpcCreateUser(t *testing.T) {
 				Password: password,
 			},
 			buildStubs: func(store *mockdb.MockStore, taskDistributor *mockwk.MockTaskDistributor) {
-				errCode := &pq.Error{
-					Code: "23505", // unique_violation errorcode
-				}
-
-				store.EXPECT().CreateUserTx(gomock.Any(), gomock.Any()).Times(1).Return(db.CreateUserTxResult{}, errCode)
+				store.EXPECT().CreateUserTx(gomock.Any(), gomock.Any()).Times(1).Return(db.CreateUserTxResult{}, db.ErrUniqueViolation)
 				taskDistributor.EXPECT().DistributeTaskSendVerifyEmail(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			checkResponses: func(t *testing.T, res *pb.CreateUserResponse, err error) {
