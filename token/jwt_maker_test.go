@@ -16,12 +16,13 @@ func TestJWTMaker(t *testing.T) {
 
 	username := util.RandomOwner()
 	duration := time.Minute
+	role := util.DepositorRole
 
 	issuedAt := jwt.NewNumericDate(time.Now())
 	expiresAt := jwt.NewNumericDate(time.Now().Add(duration))
 	notBefore := jwt.NewNumericDate(time.Now())
 
-	token, payload, err := maker.CreateToken(username, duration)
+	token, payload, err := maker.CreateToken(username, role, duration)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotEmpty(t, payload)
@@ -34,6 +35,7 @@ func TestJWTMaker(t *testing.T) {
 	require.Equal(t, payload.IssuedAt, issuedAt)
 	require.Equal(t, payload.Username, username)
 	require.Equal(t, payload.NotBefore, notBefore)
+	require.Equal(t, payload.Role, role)
 
 	maker, err = NewJWTMaker(util.RandomString(31))
 	require.EqualError(t, err, "invalid length of secret key. key must be at least 32 long")
@@ -47,8 +49,9 @@ func TestExpiredJWTToken(t *testing.T) {
 
 	username := util.RandomOwner()
 	duration := -time.Minute
+	role := util.DepositorRole
 
-	token, payload, err := maker.CreateToken(username, duration)
+	token, payload, err := maker.CreateToken(username, role, duration)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotEmpty(t, payload)
@@ -60,7 +63,8 @@ func TestExpiredJWTToken(t *testing.T) {
 }
 
 func TestInvalidJWTToken(t *testing.T) {
-	payload, err := NewPayload(util.RandomOwner(), time.Minute)
+	role := util.DepositorRole
+	payload, err := NewPayload(util.RandomOwner(), role, time.Minute)
 	require.NoError(t, err)
 	require.NotEmpty(t, payload)
 

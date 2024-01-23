@@ -56,12 +56,6 @@ func EqCreateUserTxParams(arg db.CreateUserTxParams, password string, user db.Us
 func TestRpcCreateUser(t *testing.T) {
 	newUser, password := createRandomUser(t)
 
-	createdUser := db.User{
-		Username: newUser.Username,
-		FullName: newUser.FullName,
-		Email:    newUser.Email,
-	}
-
 	testCases := []struct {
 		name           string
 		req            *pb.CreateUserRequest
@@ -85,10 +79,10 @@ func TestRpcCreateUser(t *testing.T) {
 					},
 				}
 
-				store.EXPECT().CreateUserTx(gomock.Any(), EqCreateUserTxParams(arg, password, createdUser)).Times(1).Return(db.CreateUserTxResult{User: createdUser}, nil)
+				store.EXPECT().CreateUserTx(gomock.Any(), EqCreateUserTxParams(arg, password, newUser)).Times(1).Return(db.CreateUserTxResult{User: newUser}, nil)
 
 				taskPayload := &worker.PayloadSendVerifyEmail{
-					Username: createdUser.Username,
+					Username: newUser.Username,
 				}
 				taskDistributor.EXPECT().DistributeTaskSendVerifyEmail(gomock.Any(), taskPayload, gomock.Any()).Times(1).Return(nil)
 			},
@@ -256,6 +250,7 @@ func createRandomUser(t *testing.T) (db.User, string) {
 		Email:          util.RandomEmail(),
 		FullName:       util.RandomOwner(),
 		HashedPassword: hashedPassword,
+		Role:           util.DepositorRole,
 	}
 
 	return user, password
